@@ -161,6 +161,9 @@ class TeslaStore(int, Enum):
     UK_WOL = (400821, 'Tesla Centre Wolverhampton')
     UK_BRI = (1039, 'Tesla Certified Pre-Owned Centre Bristol')
 
+    # New Zealand
+    NZ_CHC = (30962, 'Christchurch')
+
     @classmethod
     def from_str(cls, input_str):
         for TeslaStore in cls:
