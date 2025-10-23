@@ -102,6 +102,7 @@ class TeslaStore(int, Enum):
 
     # Norway
     NO_BOD = (26253, 'Bodø')
+    NO_DRAMMEN = (26255, 'Drammen')
     NO_OSLSKI = (26256, 'Oslo-Ski')
 
     # Poland
