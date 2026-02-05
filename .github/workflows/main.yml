@@ -18,16 +18,33 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Create Cache File
+      - name: Patch Script and Run
         run: |
-          # El script busca exactamente este formato
-          echo '{"refresh_token": "${{ secrets.TESLA_REFRESH_TOKEN }}", "access_token": "init", "expires_at": 1999999999}' > tesla_auth.json
-          # Hacemos una copia con el otro nombre por si acaso
-          cp tesla_auth.json cache.json 
-        
-      - name: Run script
-        run: |
-          # El "n" responde a la pregunta de si quieres guardar los datos
+          # 1. Creamos un pequeño script puente para forzar el token
+          cat << EOF > patch_script.py
+          import json
+          import os
+
+          # Forzamos la creación del archivo de tokens que el script espera
+          token_data = {
+              "refresh_token": os.environ['TESLA_REFRESH_TOKEN'],
+              "access_token": "init",
+              "expires_at": 9999999999
+          }
+          with open('tesla_auth.json', 'w') as f:
+              json.dump(token_data, f)
+          
+          print("✅ Parche aplicado: Archivo de autenticación forzado.")
+          EOF
+
+          python patch_script.py
+          
+          # 2. Ejecutamos el script original pero saltándonos la parte del login
+          # Usamos un comando de reemplazo (sed) para desactivar la petición de URL
+          sed -i "s/token_response = exchange_code_for_tokens(get_auth_code())/pass/g" tesla_order_status.py
+          
+          # 3. Correr el script
           echo "n" | python tesla_order_status.py
         env:
           TESLA_USER: ${{ secrets.TESLA_USER }}
+          TESLA_REFRESH_TOKEN: ${{ secrets.TESLA_REFRESH_TOKEN }}
