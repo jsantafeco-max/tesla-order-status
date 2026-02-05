@@ -9,15 +9,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Install dependencies
         run: pip install requests
+
+      - name: Create Cache File
+        run: |
+          echo '{"refresh_token": "${{ secrets.TESLA_REFRESH_TOKEN }}"}' > cache.json
+       
       - name: Run script
         run: python tesla_order_status.py
         env:
-          # Aquí configuraremos las credenciales en el siguiente paso
           TESLA_USER: ${{ secrets.TESLA_USER }}
-          TESLA_PASS: ${{ secrets.TESLA_PASS }}
