@@ -18,14 +18,16 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Bypass Login (Create cache.json)
+      - name: Create Cache File
         run: |
-          echo '{"refresh_token": "${{ secrets.TESLA_REFRESH_TOKEN }}", "access_token": "init"}' > cache.json
-        # Esto crea el archivo que el script busca para saltarse el navegador
-
+          # El script busca exactamente este formato
+          echo '{"refresh_token": "${{ secrets.TESLA_REFRESH_TOKEN }}", "access_token": "init", "expires_at": 1999999999}' > tesla_auth.json
+          # Hacemos una copia con el otro nombre por si acaso
+          cp tesla_auth.json cache.json 
+        
       - name: Run script
         run: |
-          # Usamos 'echo' para responder automáticamente a cualquier pregunta del script
+          # El "n" responde a la pregunta de si quieres guardar los datos
           echo "n" | python tesla_order_status.py
         env:
           TESLA_USER: ${{ secrets.TESLA_USER }}
