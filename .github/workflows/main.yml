@@ -1,8 +1,6 @@
 name: Check Tesla Order Status
 on:
-  schedule:
-    - cron: '0 * * * *' # Se ejecuta cada hora automáticamente
-  workflow_dispatch:      # Permite ejecutarlo manualmente con un botón
+  workflow_dispatch: # Botón manual
 
 jobs:
   build:
@@ -18,33 +16,43 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Patch Script and Run
+      - name: Patch and Run
+        env:
+          TESLA_REFRESH_TOKEN: ${{ secrets.TESLA_REFRESH_TOKEN }}
         run: |
-          # 1. Creamos un pequeño script puente para forzar el token
-          cat << EOF > patch_script.py
-          import json
+          # 1. Creamos un pequeño script para obtener un Access Token fresco usando tu Refresh Token
+          cat << 'EOF' > get_token.py
+          import requests
           import os
+          import json
 
-          # Forzamos la creación del archivo de tokens que el script espera
-          token_data = {
-              "refresh_token": os.environ['TESLA_REFRESH_TOKEN'],
-              "access_token": "init",
-              "expires_at": 9999999999
+          refresh_token = os.environ['TESLA_REFRESH_TOKEN']
+          url = "https://auth.tesla.com/oauth2/v3/token"
+          payload = {
+              "grant_type": "refresh_token",
+              "client_id": "ownerapi",
+              "refresh_token": refresh_token,
+              "scope": "openid email offline_access"
           }
-          with open('tesla_auth.json', 'w') as f:
-              json.dump(token_data, f)
-          
-          print("✅ Parche aplicado: Archivo de autenticación forzado.")
+          response = requests.post(url, json=payload).json()
+          if 'access_token' in response:
+              print(response['access_token'])
+          else:
+              print("ERROR")
           EOF
 
-          python patch_script.py
+          ACCESS_TOKEN=$(python get_token.py)
           
-          # 2. Ejecutamos el script original pero saltándonos la parte del login
-          # Usamos un comando de reemplazo (sed) para desactivar la petición de URL
-          sed -i "s/token_response = exchange_code_for_tokens(get_auth_code())/pass/g" tesla_order_status.py
+          if [ "$ACCESS_TOKEN" == "ERROR" ]; then
+            echo "❌ Error: El Refresh Token no es válido o expiró."
+            exit 1
+          fi
+
+          # 2. Modificamos el script original para que use este token directamente
+          # Buscamos la línea del login y la reemplazamos con nuestro token manual
+          sed -i "s/token_response = exchange_code_for_tokens(get_auth_code())/token_response = {'access_token': '$ACCESS_TOKEN'}/g" tesla_order_status.py
           
-          # 3. Correr el script
+          echo "✅ Token inyectado correctamente. Ejecutando consulta..."
+          
+          # 3. Ejecutar el script (ahora ya tiene el token dentro)
           echo "n" | python tesla_order_status.py
-        env:
-          TESLA_USER: ${{ secrets.TESLA_USER }}
-          TESLA_REFRESH_TOKEN: ${{ secrets.TESLA_REFRESH_TOKEN }}
