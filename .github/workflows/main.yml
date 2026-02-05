@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
       - name: Run script
-        run: python tesla-order-status.py
+        run: python tesla_order_status.py
         env:
           # Aquí configuraremos las credenciales en el siguiente paso
           TESLA_USER: ${{ secrets.TESLA_USER }}
