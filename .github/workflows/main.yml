@@ -1,7 +1,7 @@
 name: Check Tesla Order Status
 
 on:
-  workflow_dispatch: # Esto activa el botón manual para probarlo ahora
+  workflow_dispatch: 
 
 jobs:
   build:
@@ -23,40 +23,39 @@ jobs:
           TESLA_REFRESH_TOKEN: ${{ secrets.TESLA_REFRESH_TOKEN }}
           TESLA_USER: ${{ secrets.TESLA_USER }}
         run: |
-          # 1. Obtenemos un Access Token fresco usando tu Refresh Token de los Secrets
+          # 1. Obtener Access Token
           cat << 'EOF' > get_token.py
           import requests
           import os
-          refresh_token = os.environ['TESLA_REFRESH_TOKEN']
-          url = "https://auth.tesla.com/oauth2/v3/token"
-          payload = {
-              "grant_type": "refresh_token",
-              "client_id": "ownerapi",
-              "refresh_token": refresh_token,
-              "scope": "openid email offline_access"
-          }
-          response = requests.post(url, json=payload).json()
-          if 'access_token' in response:
-              print(response['access_token'])
-          else:
+          try:
+              refresh_token = os.environ['TESLA_REFRESH_TOKEN']
+              url = "https://auth.tesla.com/oauth2/v3/token"
+              payload = {
+                  "grant_type": "refresh_token",
+                  "client_id": "ownerapi",
+                  "refresh_token": refresh_token,
+                  "scope": "openid email offline_access"
+              }
+              response = requests.post(url, json=payload).json()
+              print(response.get('access_token', 'ERROR'))
+          except:
               print("ERROR")
           EOF
 
           ACCESS_TOKEN=$(python get_token.py)
           
-          if [ "$ACCESS_TOKEN" == "ERROR" ]; then
-            echo "❌ Error: El Refresh Token no es válido o expiró."
+          if [ "$ACCESS_TOKEN" == "ERROR" ] || [ -z "$ACCESS_TOKEN" ]; then
+            echo "❌ Error: Token no válido. Revisa tus Secrets."
             exit 1
           fi
 
-          # 2. Inyectamos los tokens directamente en el script de Niklaswa
+          # 2. Inyectar tokens y DESACTIVAR las preguntas del final
+          # Este paso es nuevo: usamos 'sed' para forzar que las preguntas siempre sean 'n' sin esperar teclado
           sed -i "s/token_response = exchange_code_for_tokens(get_auth_code())/token_response = {'access_token': '$ACCESS_TOKEN', 'refresh_token': '$TESLA_REFRESH_TOKEN'}/g" tesla_order_status.py
+          sed -i "s/input(color_text(\"Would you like to save the tokens/\"n\" #/g" tesla_order_status.py
+          sed -i "s/input(color_text(\"Would you like to save the order/\"n\" #/g" tesla_order_status.py
           
-          echo "✅ Sistema listo. Consultando a Tesla..."
+          echo "✅ Parche de seguridad aplicado. Consultando..."
 
-          # 3. Ejecutamos el script enviando 'n' a las dos preguntas que hace al final
-          printf 'n\nn' | python tesla_order_status.py
-          
-          # 3. Ejecutar el script
-          # Usamos 'n' para que NO intente guardar el archivo en disco (ya que en GitHub Actions es inútil)
-          echo "n" | python tesla_order_status.py
+          # 3. Ejecutar
+          python tesla_order_status.py
