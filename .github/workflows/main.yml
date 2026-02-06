@@ -48,7 +48,7 @@ jobs:
             exit 1
           fi
 
-        # 2. Modificamos el script original para que tenga tanto el access como el refresh token
+          # 2. Modificamos el script original para que tenga tanto el access como el refresh token
           # Inyectamos ambos para que el script no proteste al intentar guardarlos
           sed -i "s/token_response = exchange_code_for_tokens(get_auth_code())/token_response = {'access_token': '$ACCESS_TOKEN', 'refresh_token': '$TESLA_REFRESH_TOKEN'}/g" tesla_order_status.py
           
