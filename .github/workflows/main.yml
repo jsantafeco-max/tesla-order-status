@@ -1,31 +1,32 @@
 name: Check Tesla Order Status
+
 on:
-  workflow_dispatch: # Botón manual
+  workflow_dispatch: # Esto activa el botón manual para probarlo ahora
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout código
+        uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Install dependencies
+      - name: Instalar librerías
         run: pip install requests
 
-      - name: Patch and Run
+      - name: Parchear y Ejecutar
         env:
           TESLA_REFRESH_TOKEN: ${{ secrets.TESLA_REFRESH_TOKEN }}
+          TESLA_USER: ${{ secrets.TESLA_USER }}
         run: |
-          # 1. Creamos un pequeño script para obtener un Access Token fresco usando tu Refresh Token
+          # 1. Obtenemos un Access Token fresco usando tu Refresh Token de los Secrets
           cat << 'EOF' > get_token.py
           import requests
           import os
-          import json
-
           refresh_token = os.environ['TESLA_REFRESH_TOKEN']
           url = "https://auth.tesla.com/oauth2/v3/token"
           payload = {
@@ -48,11 +49,13 @@ jobs:
             exit 1
           fi
 
-          # 2. Modificamos el script original para que tenga tanto el access como el refresh token
-          # Inyectamos ambos para que el script no proteste al intentar guardarlos
+          # 2. Inyectamos los tokens directamente en el script de Niklaswa
           sed -i "s/token_response = exchange_code_for_tokens(get_auth_code())/token_response = {'access_token': '$ACCESS_TOKEN', 'refresh_token': '$TESLA_REFRESH_TOKEN'}/g" tesla_order_status.py
           
-          echo "✅ Token inyectado con refresh_token. Ejecutando consulta..."
+          echo "✅ Sistema listo. Consultando a Tesla..."
+
+          # 3. Ejecutamos el script enviando 'n' a las dos preguntas que hace al final
+          printf 'n\nn' | python tesla_order_status.py
           
           # 3. Ejecutar el script
           # Usamos 'n' para que NO intente guardar el archivo en disco (ya que en GitHub Actions es inútil)
