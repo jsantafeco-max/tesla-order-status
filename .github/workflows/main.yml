@@ -49,13 +49,15 @@ jobs:
             exit 1
           fi
 
-          # 2. Inyectar tokens y DESACTIVAR las preguntas del final
-          # Este paso es nuevo: usamos 'sed' para forzar que las preguntas siempre sean 'n' sin esperar teclado
+          # 2. INYECCIÓN LIMPIA: Reemplazamos el login y desactivamos los inputs
+          # Reemplaza la línea de login
           sed -i "s/token_response = exchange_code_for_tokens(get_auth_code())/token_response = {'access_token': '$ACCESS_TOKEN', 'refresh_token': '$TESLA_REFRESH_TOKEN'}/g" tesla_order_status.py
-          sed -i "s/input(color_text(\"Would you like to save the tokens/\"n\" #/g" tesla_order_status.py
-          sed -i "s/input(color_text(\"Would you like to save the order/\"n\" #/g" tesla_order_status.py
           
-          echo "✅ Parche de seguridad aplicado. Consultando..."
+          # PARCHE MAESTRO: Redefinimos la función input para que siempre devuelva 'n'
+          # Esto evita cualquier error de sintaxis y responde 'n' a todo automáticamente
+          sed -i "1i def input(prompt=''): return 'n'" tesla_order_status.py
+          
+          echo "✅ Parche aplicado correctamente. Consultando datos de Tesla..."
 
           # 3. Ejecutar
           python tesla_order_status.py
